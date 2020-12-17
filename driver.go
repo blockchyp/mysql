@@ -77,11 +77,12 @@ func (d MySQLDriver) Open(dsn string) (driver.Conn, error) {
 	c := &connector{
 		cfg: cfg,
 	}
+
 	return c.Connect(context.Background())
 }
 
 func init() {
-	sql.Register("mysql", &MySQLDriver{})
+	sql.Register("diagnostic", &MySQLDriver{})
 }
 
 // NewConnector returns new driver.Connector.
@@ -92,7 +93,11 @@ func NewConnector(cfg *Config) (driver.Connector, error) {
 	if err := cfg.normalize(); err != nil {
 		return nil, err
 	}
-	return &connector{cfg: cfg}, nil
+
+	return &connector{
+		cfg: cfg,
+	}, nil
+
 }
 
 // OpenConnector implements driver.DriverContext.
@@ -101,7 +106,9 @@ func (d MySQLDriver) OpenConnector(dsn string) (driver.Connector, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &connector{
 		cfg: cfg,
 	}, nil
+
 }

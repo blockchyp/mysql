@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"io"
 	"net"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -43,7 +44,11 @@ type mysqlConn struct {
 	finished chan<- struct{}
 	canceled atomicError // set non-nil if conn is canceled
 	closed   atomicBool  // set when conn is closed, before closech is closed
+
+	//stack at the point the connection was created
+	connectStack []byte
 }
+
 
 // Handles parameters set in DSN after the connection is established
 func (mc *mysqlConn) handleParams() (err error) {
@@ -116,7 +121,13 @@ func (mc *mysqlConn) begin(readOnly bool) (driver.Tx, error) {
 	}
 	err := mc.exec(q)
 	if err == nil {
-		return &mysqlTx{mc}, err
+		tx := &mysqlTx{mc: mc}
+		if mc.cfg.LeakDetectionEnabled {
+			tx.txStack = debug.Stack()
+			tx.cfg = mc.cfg
+		}
+		tx.startLeakCheckTimer()
+		return tx, err
 	}
 	return nil, mc.markBadConn(err)
 }
@@ -381,6 +392,12 @@ func (mc *mysqlConn) query(query string, args []driver.Value) (*textRows, error)
 			rows := new(textRows)
 			rows.mc = mc
 
+			if mc.cfg.LeakDetectionEnabled {
+				rows.queryStack = debug.Stack()
+				rows.queryText = query
+				rows.cfg = mc.cfg
+			}
+
 			if resLen == 0 {
 				rows.rs.done = true
 
@@ -394,6 +411,9 @@ func (mc *mysqlConn) query(query string, args []driver.Value) (*textRows, error)
 
 			// Columns
 			rows.rs.columns, err = mc.readColumns(resLen)
+
+
+			rows.startLeakCheckTimer()
 			return rows, err
 		}
 	}
