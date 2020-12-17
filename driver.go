@@ -82,7 +82,7 @@ func (d MySQLDriver) Open(dsn string) (driver.Conn, error) {
 }
 
 func init() {
-	sql.Register("mysql", &MySQLDriver{})
+	sql.Register("diagnostic", &MySQLDriver{})
 }
 
 // NewConnector returns new driver.Connector.
