@@ -12,10 +12,11 @@ import (
 	"context"
 	"database/sql/driver"
 	"net"
+	"runtime/debug"
 )
 
 type connector struct {
-	cfg *Config // immutable private copy.
+	cfg          *Config // immutable private copy.
 }
 
 // Connect implements driver.Connector interface.
@@ -30,6 +31,11 @@ func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
 		closech:          make(chan struct{}),
 		cfg:              c.cfg,
 	}
+
+	if c.cfg.LeakDetectionEnabled {
+		mc.connectStack = debug.Stack()
+	}
+
 	mc.parseTime = mc.cfg.ParseTime
 
 	// Connect to Server

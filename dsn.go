@@ -62,6 +62,12 @@ type Config struct {
 	MultiStatements         bool // Allow multiple statements in one query
 	ParseTime               bool // Parse time values to time.Time
 	RejectReadOnly          bool // Reject read-only connections
+
+	// diagnostic settings
+	LeakDetectionEnabled bool          // leak detection enabled
+	PanicOnLeak          bool          // panic when a connection lead is detected
+	LeakTimeout          *time.Duration // wait interval in seconds for leak detection
+
 }
 
 // NewConfig creates a new Config and sets default values.
@@ -270,6 +276,19 @@ func (cfg *Config) FormatDSN() string {
 
 	if cfg.MaxAllowedPacket != defaultMaxAllowedPacket {
 		writeDSNParam(&buf, &hasParam, "maxAllowedPacket", strconv.Itoa(cfg.MaxAllowedPacket))
+	}
+
+	// lead detection params
+	if cfg.LeakDetectionEnabled {
+		writeDSNParam(&buf, &hasParam, "leakDetection", "true")
+	}
+
+	if cfg.PanicOnLeak {
+		writeDSNParam(&buf, &hasParam, "panicOnLeak", "true")
+	}
+
+	if cfg.LeakTimeout != nil {
+		writeDSNParam(&buf, &hasParam, "leakTimeout", cfg.LeakTimeout.String())
 	}
 
 	// other params
@@ -537,6 +556,28 @@ func parseDSNParams(cfg *Config, params string) (err error) {
 			if err != nil {
 				return
 			}
+
+		// Leak Detection Settings
+		case "leakDetection":
+
+			boolValue, isBool := readBool(value)
+			if isBool {
+				cfg.LeakDetectionEnabled = boolValue
+				if cfg.LeakDetectionEnabled {
+					fmt.Println("NOT FOR PRODUCTION USE: MySQL leak detection is for debugging and diagnostic purposes only.")
+				}
+			}
+		case "panicOnLeak":
+			boolValue, isBool := readBool(value)
+			if isBool {
+				cfg.PanicOnLeak = boolValue
+			}
+		case "leakTimeout":
+			leakTimeout, err := time.ParseDuration(value)
+			if err != nil {
+				return err
+			}
+			cfg.LeakTimeout = &leakTimeout
 		default:
 			// lazy init
 			if cfg.Params == nil {

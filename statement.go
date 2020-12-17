@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"runtime/debug"
 )
 
 type mysqlStmt struct {
@@ -117,6 +118,14 @@ func (stmt *mysqlStmt) query(args []driver.Value) (*binaryRows, error) {
 	}
 
 	rows := new(binaryRows)
+
+	if stmt.mc.cfg.LeakDetectionEnabled {
+		rows.queryText = "statement"
+		rows.queryStack = debug.Stack()
+		rows.cfg = stmt.mc.cfg
+	}
+
+	rows.startLeakCheckTimer()
 
 	if resLen > 0 {
 		rows.mc = mc

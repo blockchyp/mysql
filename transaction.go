@@ -8,8 +8,16 @@
 
 package mysql
 
+import (
+	"os"
+	"time"
+)
+
 type mysqlTx struct {
-	mc *mysqlConn
+	mc      *mysqlConn
+	txStack []byte
+	cfg     *Config
+	closed  bool
 }
 
 func (tx *mysqlTx) Commit() (err error) {
@@ -18,6 +26,7 @@ func (tx *mysqlTx) Commit() (err error) {
 	}
 	err = tx.mc.exec("COMMIT")
 	tx.mc = nil
+	tx.closed = true
 	return
 }
 
@@ -27,5 +36,29 @@ func (tx *mysqlTx) Rollback() (err error) {
 	}
 	err = tx.mc.exec("ROLLBACK")
 	tx.mc = nil
+	tx.closed = true
 	return
+}
+
+func (tx *mysqlTx) startLeakCheckTimer() {
+
+	if !tx.cfg.LeakDetectionEnabled {
+		return
+	}
+	go func() {
+		time.Sleep(*tx.cfg.LeakTimeout)
+		tx.leakCheck()
+	}()
+}
+
+func (tx *mysqlTx) leakCheck() {
+
+	if !tx.closed {
+		os.Stderr.WriteString(ErrConnectionLeak.Error())
+		os.Stderr.Write(tx.txStack)
+		if tx.cfg.PanicOnLeak {
+			panic(ErrConnectionLeak)
+		}
+	}
+
 }
