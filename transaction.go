@@ -54,10 +54,10 @@ func (tx *mysqlTx) startLeakCheckTimer() {
 func (tx *mysqlTx) leakCheck() {
 
 	if !tx.closed {
-		os.Stderr.WriteString("transaction closure leak detected\n")
+		os.Stderr.WriteString(ErrConnectionLeak.Error())
 		os.Stderr.Write(tx.txStack)
 		if tx.cfg.PanicOnLeak {
-			panic("connection leak detected")
+			panic(ErrConnectionLeak)
 		}
 	}
 

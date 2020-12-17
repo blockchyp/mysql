@@ -35,6 +35,8 @@ var (
 	// to trigger a resend.
 	// See https://github.com/go-sql-driver/mysql/pull/302
 	errBadConnNoWrite = errors.New("bad connection")
+
+	ErrConnectionLeak = errors.New("connection leak detected")
 )
 
 var errLog = Logger(log.New(os.Stderr, "[mysql] ", log.Ldate|log.Ltime|log.Lshortfile))

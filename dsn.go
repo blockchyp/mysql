@@ -559,9 +559,13 @@ func parseDSNParams(cfg *Config, params string) (err error) {
 
 		// Leak Detection Settings
 		case "leakDetection":
+
 			boolValue, isBool := readBool(value)
 			if isBool {
 				cfg.LeakDetectionEnabled = boolValue
+				if cfg.LeakDetectionEnabled {
+					fmt.Println("NOT FOR PRODUCTION USE: MySQL leak detection is for debugging and diagnostic purposes only.")
+				}
 			}
 		case "panicOnLeak":
 			boolValue, isBool := readBool(value)

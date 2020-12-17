@@ -48,11 +48,11 @@ func (rows *mysqlRows) leakCheck() {
 
 	//the connection is nilled out when rows are cosed
 	if rows.mc != nil {
-		os.Stderr.WriteString("row closure connection leak detected\n")
-		os.Stderr.WriteString("query: " + rows.queryText + "\n")
+		os.Stderr.WriteString(ErrConnectionLeak.Error())
+		os.Stderr.WriteString("rows query: " + rows.queryText + "\n")
 		os.Stderr.Write(rows.queryStack)
 		if rows.cfg.PanicOnLeak {
-			panic("connection leak detected")
+			panic(ErrConnectionLeak)
 		}
 	}
 
